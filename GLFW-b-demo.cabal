@@ -1,0 +1,41 @@
+name:         GLFW-b-demo
+version:      0.0.1
+
+category:     Graphics
+
+synopsis:     GLFW-b test/example/demo
+description:  GLFW-b test/example/demo
+
+author:       Brian Lewis <brian@lorf.org>
+maintainer:   Brian Lewis <brian@lorf.org>
+
+license:      BSD3
+license-file: LICENSE
+
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+
+cabal-version: >= 1.6
+build-type:    Simple
+
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+
+executable GLFW-b-demo
+  main-is: Main.hs
+
+  hs-source-dirs:
+    src
+
+  build-depends:
+    base              == 4.*,
+    hslogger          == 1.*,
+    hslogger-template == 1.*,
+    GLFW-b            == 0.*,
+    OpenGL            == 2.4.*
+
+  ghc-options: -Wall -O2
+
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+
+source-repository head
+  type:     git
+  location: git://github.com/bsl/GLFW-b-demo.git
