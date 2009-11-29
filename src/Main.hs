@@ -53,19 +53,17 @@ start =
 
         q <- GLFW.keyboardKeyIsPressed GLFW.KeyboardKeyEsc
         unless q $ do
-            (xa', ya') <- adjustAngles
+            (jlr, jud) <- getJoystickDirections
+            (klr, kud) <- getCursorKeyDirections
+
+            let xa' = (xa +        jud * maxAngle) - kud
+            let ya' = (ya + negate jlr * maxAngle) - klr
+
             t <- liftM (numSecondsBetweenFrames -) GLFW.getTime
             when (t > 0) (GLFW.sleep t)
+
             loop xa' ya'
       where
-        adjustAngles :: IO (Float, Float)
-        adjustAngles = do
-            (lr, du) <- getJoystickDirections
-            return (adjust du xa, adjust (negate lr) ya)
-
-        adjust :: Float -> Float -> Float
-        adjust factor angle = angle + factor * maxAngle
-
         maxAngle :: Float
         maxAngle = 1
 
@@ -83,6 +81,17 @@ stop = do
 getJoystickDirections :: IO (Float, Float)
 getJoystickDirections = do
     r <- take 2 `fmap` GLFW.getJoystickPosition GLFW.Joystick0 2
-    if length r == 2
-      then return (r !! 0, r !! 1)
-      else return (0, 0)
+    return $
+      case r of
+        [x, y] -> (x, y)
+        _      -> (0, 0)
+
+getCursorKeyDirections :: IO (Float, Float)
+getCursorKeyDirections = do
+    l <- toFloat `fmap` GLFW.keyboardKeyIsPressed GLFW.KeyboardKeyLeft
+    r <- toFloat `fmap` GLFW.keyboardKeyIsPressed GLFW.KeyboardKeyRight
+    u <- toFloat `fmap` GLFW.keyboardKeyIsPressed GLFW.KeyboardKeyUp
+    d <- toFloat `fmap` GLFW.keyboardKeyIsPressed GLFW.KeyboardKeyDown
+    return (-l + r, -u + d)
+  where
+    toFloat b = if b then 1 else 0
