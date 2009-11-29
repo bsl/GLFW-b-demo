@@ -17,15 +17,14 @@ configureDisplay :: IO ()
 configureDisplay = do
     GLFW.initialize
 
-    GLFW.setWindowResizeCallback windowResizeCallback
-    GLFW.setWindowCloseCallback  windowCloseCallback
-
     GLFW.openWindow GLFW.defaultDisplayOptions
       { GLFW.displayOptions_numRedBits   = 5
       , GLFW.displayOptions_numGreenBits = 6
       , GLFW.displayOptions_numBlueBits  = 5
       , GLFW.displayOptions_numDepthBits = 1
       }
+
+    GLFW.setWindowResizeCallback windowResizeCallback
 
     GL.clearColor    GL.$= GL.Color4 0.05 0.05 0.05 1
     GL.depthFunc     GL.$= Just GL.Less
@@ -39,16 +38,10 @@ configureDisplay = do
     GL.diffuse  (GL.Light 0) GL.$= GL.Color4 0.8 0.8 0.8 1
     GL.light    (GL.Light 0) GL.$= GL.Enabled
 
-  where
-    windowResizeCallback :: Int -> Int -> IO ()
-    windowResizeCallback w h = do
-        GL.viewport   GL.$= (GL.Position 0 0, GL.Size (fromIntegral w) (fromIntegral h))
-        GL.matrixMode GL.$= GL.Projection
-        GL.loadIdentity
-        GL.ortho2D 0 (realToFrac w) (realToFrac h) 0
-
-    windowCloseCallback :: IO Bool
-    windowCloseCallback = return True
+windowResizeCallback :: Int -> Int -> IO ()
+windowResizeCallback w h = do
+    putStrLn $ "windowResizeCallback: " ++ show w ++ "x" ++ show h
+    GL.viewport GL.$= (GL.Position 0 0, GL.Size (fromIntegral w) (fromIntegral h))
 
 start :: IO ()
 start =
