@@ -3,7 +3,8 @@ module Main (main) where
 import Control.Monad (liftM, unless, when)
 
 import qualified Graphics.Rendering.OpenGL as GL
-import qualified Graphics.UI.GLFW          as GLFW
+
+import qualified Graphics.UI.GLFW as GLFW
 
 import qualified Display as Display
 
@@ -24,7 +25,7 @@ configureDisplay = do
       , GLFW.displayOptions_numDepthBits = 1
       }
 
-    GLFW.setWindowResizeCallback windowResizeCallback
+    GLFW.setWindowSizeCallback windowSizeCallback
 
     GL.clearColor    GL.$= GL.Color4 0.05 0.05 0.05 1
     GL.depthFunc     GL.$= Just GL.Less
@@ -38,9 +39,8 @@ configureDisplay = do
     GL.diffuse  (GL.Light 0) GL.$= GL.Color4 0.8 0.8 0.8 1
     GL.light    (GL.Light 0) GL.$= GL.Enabled
 
-windowResizeCallback :: Int -> Int -> IO ()
-windowResizeCallback w h = do
-    putStrLn $ "windowResizeCallback: " ++ show w ++ "x" ++ show h
+windowSizeCallback :: Int -> Int -> IO ()
+windowSizeCallback w h =
     GL.viewport GL.$= (GL.Position 0 0, GL.Size (fromIntegral w) (fromIntegral h))
 
 start :: IO ()
@@ -51,8 +51,9 @@ start =
         Display.draw xa ya
         GLFW.resetTime
 
-        q <- GLFW.keyboardKeyIsPressed GLFW.KeyboardKeyEsc
-        unless q $ do
+        q0 <- GLFW.keyIsPressed GLFW.KeyEsc
+        q1 <- GLFW.keyIsPressed (GLFW.CharKey 'Q')
+        unless (q0 || q1) $ do
             (jlr, jud) <- getJoystickDirections
             (klr, kud) <- getCursorKeyDirections
 
@@ -88,10 +89,10 @@ getJoystickDirections = do
 
 getCursorKeyDirections :: IO (Float, Float)
 getCursorKeyDirections = do
-    l <- toFloat `fmap` GLFW.keyboardKeyIsPressed GLFW.KeyboardKeyLeft
-    r <- toFloat `fmap` GLFW.keyboardKeyIsPressed GLFW.KeyboardKeyRight
-    u <- toFloat `fmap` GLFW.keyboardKeyIsPressed GLFW.KeyboardKeyUp
-    d <- toFloat `fmap` GLFW.keyboardKeyIsPressed GLFW.KeyboardKeyDown
+    l <- toFloat `fmap` GLFW.keyIsPressed GLFW.KeyLeft
+    r <- toFloat `fmap` GLFW.keyIsPressed GLFW.KeyRight
+    u <- toFloat `fmap` GLFW.keyIsPressed GLFW.KeyUp
+    d <- toFloat `fmap` GLFW.keyIsPressed GLFW.KeyDown
     return (-l + r, -u + d)
   where
     toFloat b = if b then 1 else 0

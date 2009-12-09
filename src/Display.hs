@@ -17,7 +17,7 @@ draw xa ya = do
         GL.rotate (realToFrac ya) yVector3
         Cube.draw w
 
-    GLFW.swapWindowBuffers
+    GLFW.swapBuffers
   where
     xVector3 = GL.Vector3 1 0 0 :: GL.Vector3 GL.GLfloat
     yVector3 = GL.Vector3 0 1 0 :: GL.Vector3 GL.GLfloat
