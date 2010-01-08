@@ -16,12 +16,12 @@ maintainer:   Brian Lewis <brian@lorf.org>
 license:      BSD3
 license-file: LICENSE
 
--- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- -- -- -- -- -- -- -- -- --
 
 cabal-version: >= 1.6
 build-type:    Simple
 
--- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- -- -- -- -- -- -- -- -- --
 
 executable GLFW-b-demo
   main-is: Main.hs
@@ -35,8 +35,10 @@ executable GLFW-b-demo
     base   == 4.*
 
   ghc-options: -Wall -O2
+  if impl(ghc >= 6.8)
+    ghc-options: -fwarn-tabs
 
--- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- -- -- -- -- -- -- -- -- --
 
 source-repository head
   type:     git
