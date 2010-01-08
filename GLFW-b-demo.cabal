@@ -1,5 +1,5 @@
 name:         GLFW-b-demo
-version:      0.0.1
+version:      0.0.2
 
 category:     Graphics
 
@@ -22,6 +22,10 @@ cabal-version: >= 1.6
 build-type:    Simple
 
 -- -- -- -- -- -- -- -- -- --
+
+extra-source-files:
+  src/Cube.hs
+  src/Display.hs
 
 executable GLFW-b-demo
   main-is: Main.hs
