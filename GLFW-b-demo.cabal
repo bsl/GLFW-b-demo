@@ -3,8 +3,12 @@ version:      0.0.1
 
 category:     Graphics
 
-synopsis:     GLFW-b test/example/demo
-description:  GLFW-b test/example/demo
+synopsis:     GLFW-b test\/example\/demo
+description:  GLFW-b test\/example\/demo.
+              .
+              Run 'GLFW-b-demo' and use a joystick or cursor keys to rotate an
+              RGB cube. /Please help me think of more interesting stuff to do/
+              /in here./
 
 author:       Brian Lewis <brian@lorf.org>
 maintainer:   Brian Lewis <brian@lorf.org>
