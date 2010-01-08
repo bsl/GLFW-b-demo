@@ -26,11 +26,9 @@ executable GLFW-b-demo
     src
 
   build-depends:
-    base              == 4.*,
-    hslogger          == 1.*,
-    hslogger-template == 1.*,
-    GLFW-b            == 0.*,
-    OpenGL            == 2.4.*
+    GLFW-b == 0.*,
+    OpenGL == 2.4.*,
+    base   == 4.*
 
   ghc-options: -Wall -O2
 
