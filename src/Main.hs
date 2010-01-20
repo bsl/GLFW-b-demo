@@ -16,9 +16,9 @@ main = do
 
 configureDisplay :: IO ()
 configureDisplay = do
-    GLFW.initialize
+    _ <- GLFW.initialize
 
-    GLFW.openWindow GLFW.defaultDisplayOptions
+    _ <- GLFW.openWindow GLFW.defaultDisplayOptions
       { GLFW.displayOptions_numRedBits   = 5
       , GLFW.displayOptions_numGreenBits = 6
       , GLFW.displayOptions_numBlueBits  = 5
