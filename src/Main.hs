@@ -19,9 +19,9 @@ configureDisplay = do
     _ <- GLFW.initialize
 
     _ <- GLFW.openWindow GLFW.defaultDisplayOptions
-      { GLFW.displayOptions_numRedBits   = 5
-      , GLFW.displayOptions_numGreenBits = 6
-      , GLFW.displayOptions_numBlueBits  = 5
+      { GLFW.displayOptions_numRedBits   = 8
+      , GLFW.displayOptions_numGreenBits = 8
+      , GLFW.displayOptions_numBlueBits  = 8
       , GLFW.displayOptions_numDepthBits = 1
       }
 
