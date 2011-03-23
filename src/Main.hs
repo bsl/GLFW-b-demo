@@ -2,7 +2,8 @@ module Main (main) where
 
 import Control.Monad (liftM, unless, when)
 
-import qualified Graphics.Rendering.OpenGL as GL
+import qualified Graphics.Rendering.GLU.Raw as GLU
+import qualified Graphics.Rendering.OpenGL  as GL
 
 import qualified Graphics.UI.GLFW as GLFW
 
@@ -40,8 +41,9 @@ configureDisplay = do
     GL.light    (GL.Light 0) GL.$= GL.Enabled
 
 windowSizeCallback :: Int -> Int -> IO ()
-windowSizeCallback w h =
+windowSizeCallback w h = do
     GL.viewport GL.$= (GL.Position 0 0, GL.Size (fromIntegral w) (fromIntegral h))
+    GLU.gluPerspective 45 (fromIntegral w / fromIntegral h) 0.1 100
 
 start :: IO ()
 start =

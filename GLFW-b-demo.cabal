@@ -36,6 +36,7 @@ executable GLFW-b-demo
   build-depends:
     GLFW-b == 0.*,
     OpenGL == 2.4.*,
+    GLURaw == 1.1.*,
     base   == 4.*
 
   ghc-options: -Wall -O2
