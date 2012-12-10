@@ -2,7 +2,7 @@ module Display
   ( draw
   ) where
 
-import qualified Cube as Cube
+import qualified Cube
 
 import qualified Graphics.Rendering.OpenGL as GL
 import qualified Graphics.UI.GLFW          as GLFW

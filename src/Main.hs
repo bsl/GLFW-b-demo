@@ -7,7 +7,7 @@ import qualified Graphics.Rendering.OpenGL  as GL
 
 import qualified Graphics.UI.GLFW as GLFW
 
-import qualified Display as Display
+import qualified Display
 
 main :: IO ()
 main = do
