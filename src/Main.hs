@@ -60,63 +60,76 @@ main = do
 
     eventsChan <- newTChanIO :: IO (TChan Event)
 
-    GLFW.setErrorCallback $ Just $ errorCallback eventsChan
+    withWindow width height "GLFW-b-demo" $ \win -> do
+        GLFW.setErrorCallback               $ Just $ errorCallback           eventsChan
+        GLFW.setWindowPosCallback       win $ Just $ windowPosCallback       eventsChan
+        GLFW.setWindowSizeCallback      win $ Just $ windowSizeCallback      eventsChan
+        GLFW.setWindowCloseCallback     win $ Just $ windowCloseCallback     eventsChan
+        GLFW.setWindowRefreshCallback   win $ Just $ windowRefreshCallback   eventsChan
+        GLFW.setWindowFocusCallback     win $ Just $ windowFocusCallback     eventsChan
+        GLFW.setWindowIconifyCallback   win $ Just $ windowIconifyCallback   eventsChan
+        GLFW.setFramebufferSizeCallback win $ Just $ framebufferSizeCallback eventsChan
+        GLFW.setMouseButtonCallback     win $ Just $ mouseButtonCallback     eventsChan
+        GLFW.setCursorPosCallback       win $ Just $ cursorPosCallback       eventsChan
+        GLFW.setCursorEnterCallback     win $ Just $ cursorEnterCallback     eventsChan
+        GLFW.setScrollCallback          win $ Just $ scrollCallback          eventsChan
+        GLFW.setKeyCallback             win $ Just $ keyCallback             eventsChan
+        GLFW.setCharCallback            win $ Just $ charCallback            eventsChan
 
-    True       <- GLFW.initialize
-    (Just win) <- GLFW.createWindow width height "GLFW-b-demo" Nothing Nothing
+        -- GLFW.swapInterval 1
 
-    GLFW.setWindowPosCallback       win $ Just $ windowPosCallback       eventsChan
-    GLFW.setWindowSizeCallback      win $ Just $ windowSizeCallback      eventsChan
-    GLFW.setWindowCloseCallback     win $ Just $ windowCloseCallback     eventsChan
-    GLFW.setWindowRefreshCallback   win $ Just $ windowRefreshCallback   eventsChan
-    GLFW.setWindowFocusCallback     win $ Just $ windowFocusCallback     eventsChan
-    GLFW.setWindowIconifyCallback   win $ Just $ windowIconifyCallback   eventsChan
-    GLFW.setFramebufferSizeCallback win $ Just $ framebufferSizeCallback eventsChan
-    GLFW.setMouseButtonCallback     win $ Just $ mouseButtonCallback     eventsChan
-    GLFW.setCursorPosCallback       win $ Just $ cursorPosCallback       eventsChan
-    GLFW.setCursorEnterCallback     win $ Just $ cursorEnterCallback     eventsChan
-    GLFW.setScrollCallback          win $ Just $ scrollCallback          eventsChan
-    GLFW.setKeyCallback             win $ Just $ keyCallback             eventsChan
-    GLFW.setCharCallback            win $ Just $ charCallback            eventsChan
+        GL.position (GL.Light 0) GL.$= GL.Vertex4 5 5 10 0
+        GL.light    (GL.Light 0) GL.$= GL.Enabled
+        GL.lighting   GL.$= GL.Enabled
+        GL.cullFace   GL.$= Just GL.Back
+        GL.depthFunc  GL.$= Just GL.Less
+        GL.clearColor GL.$= GL.Color4 0.05 0.05 0.05 1
+        GL.normalize  GL.$= GL.Enabled
 
-    GLFW.makeContextCurrent win
-    -- GLFW.swapInterval 1
+        gear1 <- makeGear 1   4 1   20 0.7 (GL.Color4 0.8 0.1 0   1)  -- red
+        gear2 <- makeGear 0.5 2 2   10 0.7 (GL.Color4 0   0.8 0.2 1)  -- green
+        gear3 <- makeGear 1.3 2 0.5 10 0.7 (GL.Color4 0.2 0.2 1   1)  -- blue
 
-    GL.position (GL.Light 0) GL.$= GL.Vertex4 5 5 10 0
-    GL.light    (GL.Light 0) GL.$= GL.Enabled
-    GL.lighting   GL.$= GL.Enabled
-    GL.cullFace   GL.$= Just GL.Back
-    GL.depthFunc  GL.$= Just GL.Less
-    GL.clearColor GL.$= GL.Color4 0.05 0.05 0.05 1
-    GL.normalize  GL.$= GL.Enabled
+        let env = Env
+              { envEventsChan = eventsChan
+              , envWindow     = win
+              , envGear1      = gear1
+              , envGear2      = gear2
+              , envGear3      = gear3
+              }
+            state = State
+              { stateWindowWidth      = width
+              , stateWindowHeight     = height
+              , stateIsCursorInWindow = False
+              , stateViewXAngle       =   0
+              , stateViewYAngle       =   0
+              , stateViewZAngle       =   0
+              , stateGearAngle        =   0
+              , stateZDistance        = -20
+              }
+        runDemo env state
 
-    gear1 <- makeGear 1   4 1   20 0.7 (GL.Color4 0.8 0.1 0   1)  -- red
-    gear2 <- makeGear 0.5 2 2   10 0.7 (GL.Color4 0   0.8 0.2 1)  -- green
-    gear3 <- makeGear 1.3 2 0.5 10 0.7 (GL.Color4 0.2 0.2 1   1)  -- blue
-
-    let env = Env
-          { envEventsChan = eventsChan
-          , envWindow     = win
-          , envGear1      = gear1
-          , envGear2      = gear2
-          , envGear3      = gear3
-          }
-        state = State
-          { stateWindowWidth      = width
-          , stateWindowHeight     = height
-          , stateIsCursorInWindow = False
-          , stateViewXAngle       = 0
-          , stateViewYAngle       = 0
-          , stateViewZAngle       = 0
-          , stateGearAngle        = 0
-          , stateZDistance        = -20
-          }
-
-    run env state
-
-    GLFW.destroyWindow win
-    GLFW.terminate
     putStrLn "ended!"
+
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+
+withWindow :: Int -> Int -> String -> (GLFW.Window -> IO ()) -> IO ()
+withWindow width height title f = do
+    GLFW.setErrorCallback $ Just simpleErrorCallback
+    r <- GLFW.initialize
+    when r $ do
+        m <- GLFW.createWindow width height title Nothing Nothing
+        case m of
+            (Just win) -> do
+                GLFW.makeContextCurrent win
+                f win
+                GLFW.setErrorCallback $ Just simpleErrorCallback
+                GLFW.destroyWindow win
+            Nothing -> return ()
+        GLFW.terminate
+  where
+    simpleErrorCallback e s =
+        putStrLn $ "error: " ++ show e ++ " " ++ show s
 
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
@@ -152,12 +165,12 @@ charCallback            tc win c          = atomically $ writeTChan tc $ EventCh
 
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
-run :: Env -> State -> IO ()
-run env state =
-    void $ evalRWST runDemo env state
+runDemo :: Env -> State -> IO ()
+runDemo env state =
+    void $ evalRWST run env state
 
-runDemo :: Demo ()
-runDemo = do
+run :: Demo ()
+run = do
     win <- asks envWindow
 
     draw
@@ -190,7 +203,7 @@ runDemo = do
       }
 
     q <- liftIO $ GLFW.windowShouldClose win
-    unless q runDemo
+    unless q run
 
 processEvents :: Demo ()
 processEvents = do
