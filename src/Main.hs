@@ -2,6 +2,7 @@ module Main (main) where
 
 import Control.Monad            (unless, void)
 import Control.Monad.RWS.Strict (RWST, ask, evalRWST, get, liftIO, put)
+import Data.Maybe               (catMaybes)
 
 import qualified Graphics.Rendering.OpenGL as GL
 
@@ -137,7 +138,7 @@ framebufferSizeCallback _ width height =
 
 mouseButtonCallback :: GLFW.Window -> GLFW.MouseButton -> GLFW.MouseButtonAction -> GLFW.ModifierKeys -> IO ()
 mouseButtonCallback _ mb mba mk =
-    printFields "mouseButton" [show mb, show mba, show mk]
+    printFields "mouseButton" [show mb, show mba, showModifierKeys mk]
 
 cursorPosCallback :: GLFW.Window -> Double -> Double -> IO ()
 cursorPosCallback _ x y =
@@ -153,7 +154,7 @@ scrollCallback _ x y =
 
 keyCallback :: GLFW.Window -> GLFW.Key -> Int -> GLFW.KeyAction -> GLFW.ModifierKeys -> IO ()
 keyCallback _ k sc ka mk =
-    printFields "key" [show k, show sc, show ka, show mk]
+    printFields "key" [show k, show sc, show ka, showModifierKeys mk]
 
 charCallback :: GLFW.Window -> Char -> IO ()
 charCallback _ c =
@@ -164,6 +165,18 @@ charCallback _ c =
 printFields :: String -> [String] -> IO ()
 printFields cbname fields = putStrLn $ cbname ++ ": " ++ unwords fields
 
+showModifierKeys :: GLFW.ModifierKeys -> String
+showModifierKeys mk =
+    "[mod keys: " ++ keys ++ "]"
+  where
+    keys = if null xs then "none" else unwords xs
+    xs = catMaybes ys
+    ys = [ if GLFW.modifierKeysShift   mk then Just "shift"   else Nothing
+         , if GLFW.modifierKeysControl mk then Just "control" else Nothing
+         , if GLFW.modifierKeysAlt     mk then Just "alt"     else Nothing
+         , if GLFW.modifierKeysSuper   mk then Just "super"   else Nothing
+         ]
+
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
 run :: Env -> State -> IO ()
@@ -172,21 +185,23 @@ run env state =
 
 runDemo :: Demo ()
 runDemo = do
+    draw
     env   <- ask
     state <- get
     let w = envWindow env
-    draw
-    liftIO $ GLFW.swapBuffers w
-    liftIO GLFW.pollEvents
+    liftIO $ do
+        GLFW.swapBuffers w
+        GLFW.pollEvents
     q0 <- liftIO $ GLFW.getKey w GLFW.KeyEscape
     q1 <- liftIO $ GLFW.getKey w GLFW.KeyQ
     unless (isPress q0 || isPress q1) $ do
+        (kxrot, kyrot) <- liftIO $ getCursorKeyDirections w
+        (jxrot, jyrot) <- liftIO $ getJoystickDirections GLFW.Joystick1
+        mt             <- liftIO GLFW.getTime
         let xa = stateViewXAngle state
             ya = stateViewYAngle state
-        (xrot, yrot) <- liftIO $ getCursorKeyDirections w
-        mt <- liftIO GLFW.getTime
-        let xa' = xa + xrot
-            ya' = ya + yrot
+            xa' = xa + kxrot + jxrot
+            ya' = ya + kyrot + jyrot
             ga' = maybe 0 (realToFrac . (100*)) mt
         put state
             { stateViewXAngle = xa'
@@ -243,6 +258,13 @@ getCursorKeyDirections w = do
         y0n = if y0 then   1  else 0
         y1n = if y1 then (-1) else 0
     return (x0n + x1n, y0n + y1n)
+
+getJoystickDirections :: GLFW.Joystick -> IO (Float, Float)
+getJoystickDirections js = do
+    maxes <- GLFW.getJoystickAxes js
+    return $ case maxes of
+      (Just (x:y:_)) -> (y,x)
+      _              -> (0,0)
 
 isPress :: GLFW.KeyAction -> Bool
 isPress GLFW.KeyPress  = True
