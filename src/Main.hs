@@ -1,9 +1,12 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Main (main) where
 
 import Control.Concurrent.STM   (TChan, atomically, newTChanIO, tryReadTChan, writeTChan)
 import Control.Monad            (unless, when, void)
 import Control.Monad.RWS.Strict (RWST, ask, asks, evalRWST, get, liftIO, modify)
 import Data.Maybe               (catMaybes)
+import System.Remote.Monitoring
 
 import qualified Graphics.Rendering.OpenGL as GL
 
@@ -19,17 +22,19 @@ data Env = Env
     , envGear1      :: !GL.DisplayList
     , envGear2      :: !GL.DisplayList
     , envGear3      :: !GL.DisplayList
+    , envZDistMin   :: !Double
+    , envZDistMax   :: !Double
     }
 
 data State = State
     { stateWindowWidth      :: !Int
     , stateWindowHeight     :: !Int
     , stateIsCursorInWindow :: !Bool
-    , stateViewXAngle       :: !Float
-    , stateViewYAngle       :: !Float
-    , stateViewZAngle       :: !Float
-    , stateGearAngle        :: !Float
-    , stateZDistance        :: !Float
+    , stateViewXAngle       :: !Double
+    , stateViewYAngle       :: !Double
+    , stateViewZAngle       :: !Double
+    , stateGearAngle        :: !Double
+    , stateZDistance        :: !Double
     }
 
 type Demo = RWST Env () State IO
@@ -40,14 +45,14 @@ data Event =
   | EventWindowSize      !GLFW.Window !Int !Int
   | EventWindowClose     !GLFW.Window
   | EventWindowRefresh   !GLFW.Window
-  | EventWindowFocus     !GLFW.Window !GLFW.FocusAction
-  | EventWindowIconify   !GLFW.Window !GLFW.IconifyAction
+  | EventWindowFocus     !GLFW.Window !GLFW.FocusState
+  | EventWindowIconify   !GLFW.Window !GLFW.IconifyState
   | EventFramebufferSize !GLFW.Window !Int !Int
-  | EventMouseButton     !GLFW.Window !GLFW.MouseButton !GLFW.MouseButtonAction !GLFW.ModifierKeys
+  | EventMouseButton     !GLFW.Window !GLFW.MouseButton !GLFW.MouseButtonState !GLFW.ModifierKeys
   | EventCursorPos       !GLFW.Window !Double !Double
-  | EventCursorEnter     !GLFW.Window !GLFW.CursorAction
+  | EventCursorEnter     !GLFW.Window !GLFW.CursorState
   | EventScroll          !GLFW.Window !Double !Double
-  | EventKey             !GLFW.Window !GLFW.Key !Int !GLFW.KeyAction !GLFW.ModifierKeys
+  | EventKey             !GLFW.Window !GLFW.Key !Int !GLFW.KeyState !GLFW.ModifierKeys
   | EventChar            !GLFW.Window !Char
   deriving Show
 
@@ -55,6 +60,8 @@ data Event =
 
 main :: IO ()
 main = do
+    _ <- forkServer "localhost" 8000
+
     let width  = 640
         height = 480
 
@@ -90,22 +97,27 @@ main = do
         gear2 <- makeGear 0.5 2 2   10 0.7 (GL.Color4 0   0.8 0.2 1)  -- green
         gear3 <- makeGear 1.3 2 0.5 10 0.7 (GL.Color4 0.2 0.2 1   1)  -- blue
 
-        let env = Env
+        let zmin = -23
+            zmax = -13
+            z    = zmin + ((zmax - zmin) / 2)
+            env = Env
               { envEventsChan = eventsChan
               , envWindow     = win
               , envGear1      = gear1
               , envGear2      = gear2
               , envGear3      = gear3
+              , envZDistMin   = zmin
+              , envZDistMax   = zmax
               }
             state = State
               { stateWindowWidth      = width
               , stateWindowHeight     = height
               , stateIsCursorInWindow = False
-              , stateViewXAngle       =   0
-              , stateViewYAngle       =   0
-              , stateViewZAngle       =   0
-              , stateGearAngle        =   0
-              , stateZDistance        = -20
+              , stateViewXAngle       = 0
+              , stateViewYAngle       = 0
+              , stateViewZAngle       = 0
+              , stateGearAngle        = 0
+              , stateZDistance        = z
               }
         runDemo env state
 
@@ -116,16 +128,16 @@ main = do
 withWindow :: Int -> Int -> String -> (GLFW.Window -> IO ()) -> IO ()
 withWindow width height title f = do
     GLFW.setErrorCallback $ Just simpleErrorCallback
-    r <- GLFW.initialize
+    r <- GLFW.init
     when r $ do
         m <- GLFW.createWindow width height title Nothing Nothing
         case m of
-            (Just win) -> do
-                GLFW.makeContextCurrent win
-                f win
-                GLFW.setErrorCallback $ Just simpleErrorCallback
-                GLFW.destroyWindow win
-            Nothing -> return ()
+          (Just win) -> do
+              GLFW.makeContextCurrent m
+              f win
+              GLFW.setErrorCallback $ Just simpleErrorCallback
+              GLFW.destroyWindow win
+          Nothing -> return ()
         GLFW.terminate
   where
     simpleErrorCallback e s =
@@ -133,20 +145,20 @@ withWindow width height title f = do
 
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
-errorCallback           :: TChan Event -> GLFW.Error -> String                                                             -> IO ()
-windowPosCallback       :: TChan Event -> GLFW.Window -> Int -> Int                                                        -> IO ()
-windowSizeCallback      :: TChan Event -> GLFW.Window -> Int -> Int                                                        -> IO ()
-windowCloseCallback     :: TChan Event -> GLFW.Window                                                                      -> IO ()
-windowRefreshCallback   :: TChan Event -> GLFW.Window                                                                      -> IO ()
-windowFocusCallback     :: TChan Event -> GLFW.Window -> GLFW.FocusAction                                                  -> IO ()
-windowIconifyCallback   :: TChan Event -> GLFW.Window -> GLFW.IconifyAction                                                -> IO ()
-framebufferSizeCallback :: TChan Event -> GLFW.Window -> Int -> Int                                                        -> IO ()
-mouseButtonCallback     :: TChan Event -> GLFW.Window -> GLFW.MouseButton   -> GLFW.MouseButtonAction -> GLFW.ModifierKeys -> IO ()
-cursorPosCallback       :: TChan Event -> GLFW.Window -> Double -> Double                                                  -> IO ()
-cursorEnterCallback     :: TChan Event -> GLFW.Window -> GLFW.CursorAction                                                 -> IO ()
-scrollCallback          :: TChan Event -> GLFW.Window -> Double -> Double                                                  -> IO ()
-keyCallback             :: TChan Event -> GLFW.Window -> GLFW.Key -> Int -> GLFW.KeyAction -> GLFW.ModifierKeys            -> IO ()
-charCallback            :: TChan Event -> GLFW.Window -> Char                                                              -> IO ()
+errorCallback           :: TChan Event -> GLFW.Error -> String                                                            -> IO ()
+windowPosCallback       :: TChan Event -> GLFW.Window -> Int -> Int                                                       -> IO ()
+windowSizeCallback      :: TChan Event -> GLFW.Window -> Int -> Int                                                       -> IO ()
+windowCloseCallback     :: TChan Event -> GLFW.Window                                                                     -> IO ()
+windowRefreshCallback   :: TChan Event -> GLFW.Window                                                                     -> IO ()
+windowFocusCallback     :: TChan Event -> GLFW.Window -> GLFW.FocusState                                                  -> IO ()
+windowIconifyCallback   :: TChan Event -> GLFW.Window -> GLFW.IconifyState                                                -> IO ()
+framebufferSizeCallback :: TChan Event -> GLFW.Window -> Int -> Int                                                       -> IO ()
+mouseButtonCallback     :: TChan Event -> GLFW.Window -> GLFW.MouseButton   -> GLFW.MouseButtonState -> GLFW.ModifierKeys -> IO ()
+cursorPosCallback       :: TChan Event -> GLFW.Window -> Double -> Double                                                 -> IO ()
+cursorEnterCallback     :: TChan Event -> GLFW.Window -> GLFW.CursorState                                                 -> IO ()
+scrollCallback          :: TChan Event -> GLFW.Window -> Double -> Double                                                 -> IO ()
+keyCallback             :: TChan Event -> GLFW.Window -> GLFW.Key -> Int -> GLFW.KeyState -> GLFW.ModifierKeys            -> IO ()
+charCallback            :: TChan Event -> GLFW.Window -> Char                                                             -> IO ()
 
 errorCallback           tc e s            = atomically $ writeTChan tc $ EventError           e s
 windowPosCallback       tc win x y        = atomically $ writeTChan tc $ EventWindowPos       win x y
@@ -182,7 +194,7 @@ run = do
     state <- get
 
     (kxrot, kyrot) <- liftIO $ getCursorKeyDirections win
-    (jxrot, jyrot) <- liftIO $ getJoystickDirections GLFW.Joystick1
+    (jxrot, jyrot) <- liftIO $ getJoystickDirections GLFW.Joystick'1
     (mxrot, myrot) <- if stateIsCursorInWindow state
                         then let w = stateWindowWidth  state
                                  h = stateWindowHeight state
@@ -240,11 +252,11 @@ processEvent ev =
       (EventWindowRefresh _) ->
           printEvent "window refresh" []
 
-      (EventWindowFocus _ fa) ->
-          printEvent "window focus" [show fa]
+      (EventWindowFocus _ fs) ->
+          printEvent "window focus" [show fs]
 
-      (EventWindowIconify _ ia) ->
-          printEvent "window iconify" [show ia]
+      (EventWindowIconify _ is) ->
+          printEvent "window iconify" [show is]
 
       (EventFramebufferSize _ w h) ->
           printEvent "framebuffer size" [show w, show h]
@@ -257,24 +269,27 @@ processEvent ev =
               y' = round y :: Int
           printEvent "cursor pos" [show x', show y']
 
-      (EventCursorEnter _ ca) -> do
-          printEvent "cursor enter" [show ca]
+      (EventCursorEnter _ cs) -> do
+          printEvent "cursor enter" [show cs]
           modify $ \s -> s
-            { stateIsCursorInWindow = ca == GLFW.CursorEnter
+            { stateIsCursorInWindow = cs == GLFW.CursorState'InWindow
             }
 
       (EventScroll _ x y) -> do
           let x' = round x :: Int
               y' = round y :: Int
           printEvent "scroll" [show x', show y']
+          env <- ask
           modify $ \s -> s
-            { stateZDistance = stateZDistance s + realToFrac y
+            { stateZDistance =
+                let z' = stateZDistance s + realToFrac (y / 2)
+                in curb (envZDistMin env) (envZDistMax env) z'
             }
           adjustWindow
 
-      (EventKey win k scancode ka mk) -> do
-          printEvent "key" [show k, show scancode, show ka, showModifierKeys mk]
-          when ((k == GLFW.KeyQ || k == GLFW.KeyEscape) && ka == GLFW.KeyPress) $
+      (EventKey win k scancode ks mk) -> do
+          printEvent "key" [show k, show scancode, show ks, showModifierKeys mk]
+          when (ks == GLFW.KeyState'Pressed && (k == GLFW.Key'Q || k == GLFW.Key'Escape)) $
               liftIO $ GLFW.setWindowShouldClose win True
 
       (EventChar _ c) ->
@@ -288,10 +303,10 @@ adjustWindow = do
         zdist  = stateZDistance    state
         pos    = GL.Position 0 0
         size   = GL.Size (fromIntegral width) (fromIntegral height)
-        h      = fromIntegral height / fromIntegral width :: Float
-        znear  = 5           :: Float
-        zfar   = 30          :: Float
-        xmax   = znear * 0.5 :: Float
+        h      = fromIntegral height / fromIntegral width :: Double
+        znear  = 5           :: Double
+        zfar   = 30          :: Double
+        xmax   = znear * 0.5 :: Double
     liftIO $ do
         GL.viewport   GL.$= (pos, size)
         GL.matrixMode GL.$= GL.Projection
@@ -343,26 +358,26 @@ draw = do
         yunit = GL.Vector3 0 1 0 :: GL.Vector3 GL.GLfloat
         zunit = GL.Vector3 0 0 1 :: GL.Vector3 GL.GLfloat
 
-getCursorKeyDirections :: GLFW.Window -> IO (Float, Float)
+getCursorKeyDirections :: GLFW.Window -> IO (Double, Double)
 getCursorKeyDirections win = do
-    x0 <- isPress `fmap` GLFW.getKey win GLFW.KeyUp
-    x1 <- isPress `fmap` GLFW.getKey win GLFW.KeyDown
-    y0 <- isPress `fmap` GLFW.getKey win GLFW.KeyLeft
-    y1 <- isPress `fmap` GLFW.getKey win GLFW.KeyRight
+    x0 <- isPress `fmap` GLFW.getKey win GLFW.Key'Up
+    x1 <- isPress `fmap` GLFW.getKey win GLFW.Key'Down
+    y0 <- isPress `fmap` GLFW.getKey win GLFW.Key'Left
+    y1 <- isPress `fmap` GLFW.getKey win GLFW.Key'Right
     let x0n = if x0 then   1  else 0
         x1n = if x1 then (-1) else 0
         y0n = if y0 then   1  else 0
         y1n = if y1 then (-1) else 0
     return (x0n + x1n, y0n + y1n)
 
-getJoystickDirections :: GLFW.Joystick -> IO (Float, Float)
+getJoystickDirections :: GLFW.Joystick -> IO (Double, Double)
 getJoystickDirections js = do
     maxes <- GLFW.getJoystickAxes js
     return $ case maxes of
       (Just (x:y:_)) -> (y, x)
       _              -> (0, 0)
 
-getMouseDirections :: GLFW.Window -> Int -> Int -> IO (Float, Float)
+getMouseDirections :: GLFW.Window -> Int -> Int -> IO (Double, Double)
 getMouseDirections win w h = do
     (x, y) <- GLFW.getCursorPos win
     let wd2 = realToFrac w / 2
@@ -371,10 +386,10 @@ getMouseDirections win w h = do
         xrot = (hd2 - y) / hd2
     return (realToFrac xrot, realToFrac yrot)
 
-isPress :: GLFW.KeyAction -> Bool
-isPress GLFW.KeyPress  = True
-isPress GLFW.KeyRepeat = True
-isPress _              = False
+isPress :: GLFW.KeyState -> Bool
+isPress GLFW.KeyState'Pressed   = True
+isPress GLFW.KeyState'Repeating = True
+isPress _                       = False
 
 -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
@@ -393,3 +408,9 @@ showModifierKeys mk =
          , if GLFW.modifierKeysAlt     mk then Just "alt"     else Nothing
          , if GLFW.modifierKeysSuper   mk then Just "super"   else Nothing
          ]
+
+curb :: Ord a => a -> a -> a -> a
+curb l h x
+  | x < l     = l
+  | x > h     = h
+  | otherwise = x
