@@ -179,7 +179,7 @@ charCallback            tc win c          = atomically $ writeTChan tc $ EventCh
 
 runDemo :: Env -> State -> IO ()
 runDemo env state =
-    void $ evalRWST run env state
+    void $ evalRWST (adjustWindow >> run) env state
 
 run :: Demo ()
 run = do
