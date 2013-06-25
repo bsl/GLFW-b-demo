@@ -1,12 +1,9 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Main (main) where
 
 import Control.Concurrent.STM   (TChan, atomically, newTChanIO, tryReadTChan, writeTChan)
 import Control.Monad            (unless, when, void)
 import Control.Monad.RWS.Strict (RWST, ask, asks, evalRWST, get, liftIO, modify)
 import Data.Maybe               (catMaybes)
-import System.Remote.Monitoring
 
 import qualified Graphics.Rendering.OpenGL as GL
 
@@ -14,7 +11,7 @@ import qualified Graphics.UI.GLFW as GLFW
 
 import Gear (makeGear)
 
--- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+--------------------------------------------------------------------------------
 
 data Env = Env
     { envEventsChan :: TChan Event
@@ -56,12 +53,10 @@ data Event =
   | EventChar            !GLFW.Window !Char
   deriving Show
 
--- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+--------------------------------------------------------------------------------
 
 main :: IO ()
 main = do
-    _ <- forkServer "localhost" 8000
-
     let width  = 640
         height = 480
 
@@ -123,7 +118,7 @@ main = do
 
     putStrLn "ended!"
 
--- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+--------------------------------------------------------------------------------
 
 withWindow :: Int -> Int -> String -> (GLFW.Window -> IO ()) -> IO ()
 withWindow width height title f = do
@@ -143,7 +138,7 @@ withWindow width height title f = do
     simpleErrorCallback e s =
         putStrLn $ "error: " ++ show e ++ " " ++ show s
 
--- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+--------------------------------------------------------------------------------
 
 errorCallback           :: TChan Event -> GLFW.Error -> String                                                            -> IO ()
 windowPosCallback       :: TChan Event -> GLFW.Window -> Int -> Int                                                       -> IO ()
@@ -175,7 +170,7 @@ scrollCallback          tc win x y        = atomically $ writeTChan tc $ EventSc
 keyCallback             tc win k sc ka mk = atomically $ writeTChan tc $ EventKey             win k sc ka mk
 charCallback            tc win c          = atomically $ writeTChan tc $ EventChar            win c
 
--- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+--------------------------------------------------------------------------------
 
 runDemo :: Env -> State -> IO ()
 runDemo env state =
@@ -391,7 +386,7 @@ isPress GLFW.KeyState'Pressed   = True
 isPress GLFW.KeyState'Repeating = True
 isPress _                       = False
 
--- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+--------------------------------------------------------------------------------
 
 printEvent :: String -> [String] -> Demo ()
 printEvent cbname fields =

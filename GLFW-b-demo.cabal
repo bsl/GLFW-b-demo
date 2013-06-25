@@ -1,20 +1,19 @@
-name:         GLFW-b-demo
-version:      0.1.1
+name:          GLFW-b-demo
+version:       1.0.0
 
-category:     Graphics
+author:        Brian Lewis <brian@lorf.org>
+maintainer:    Brian Lewis <brian@lorf.org>
 
-synopsis:     GLFW-b demo
+category:      Graphics
+synopsis:      GLFW-b demo
 description:
-  GLFW-b test\/example\/demo.
+  GLFW-b demo.
   .
-  Run 'GLFW-b-demo' and use a joystick or cursor keys to rotate an RGB cube.
-  /Please help me think of more interesting stuff to do/ /in here./
+  Run 'GLFW-b-demo' and use cursor keys, mouse, and/or joystick to control
+  spinning gears.
 
-author:       Brian Lewis <brian@lorf.org>
-maintainer:   Brian Lewis <brian@lorf.org>
-
-license:      BSD3
-license-file: LICENSE
+license:       BSD3
+license-file:  LICENSE
 
 cabal-version: >= 1.10
 build-type:    Simple
@@ -32,8 +31,7 @@ executable GLFW-b-demo
     OpenGL == 2.8.*,
     base   == 4.*,
     mtl    == 2.*,
-    stm    == 2.*,
-    ekg
+    stm    == 2.*
 
   ghc-options: -Wall -O2 -threaded
   if impl(ghc >= 6.8)

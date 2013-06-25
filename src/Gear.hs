@@ -2,8 +2,13 @@ module Gear
   ( makeGear
   ) where
 
+--------------------------------------------------------------------------------
+
 import Control.Monad (forM_, when)
+
 import qualified Graphics.Rendering.OpenGL as GL
+
+--------------------------------------------------------------------------------
 
 makeGear :: Float -> Float -> Float -> Int -> Float -> GL.Color4 GL.GLfloat -> IO GL.DisplayList
 makeGear inradius outradius width teeth toothdepth color =
@@ -119,4 +124,3 @@ normal x y z =
 mkNormal :: Float -> Float -> Float -> GL.Normal3 GL.GLfloat
 mkNormal x y z =
     GL.Normal3 (realToFrac x) (realToFrac y) (realToFrac z)
-
