@@ -1,13 +1,17 @@
 module Main (main) where
 
-import Control.Concurrent.STM   (TChan, atomically, newTChanIO, tryReadTChan, writeTChan)
-import Control.Monad            (unless, when, void)
-import Control.Monad.RWS.Strict (RWST, ask, asks, evalRWST, get, liftIO, modify)
-import Data.Maybe               (catMaybes)
+--------------------------------------------------------------------------------
+
+import Control.Concurrent.STM    (TChan, atomically, newTChanIO, tryReadTChan, writeTChan)
+import Control.Monad             (unless, when, void)
+import Control.Monad.RWS.Strict  (RWST, ask, asks, evalRWST, get, liftIO, modify)
+import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
+import Data.List                 (intercalate)
+import Data.Maybe                (catMaybes)
+import Text.PrettyPrint
 
 import qualified Graphics.Rendering.OpenGL as GL
-
-import qualified Graphics.UI.GLFW as GLFW
+import qualified Graphics.UI.GLFW          as GLFW
 
 import Gear (makeGear)
 
@@ -35,6 +39,8 @@ data State = State
     }
 
 type Demo = RWST Env () State IO
+
+--------------------------------------------------------------------------------
 
 data Event =
     EventError           !GLFW.Error !String
@@ -136,9 +142,11 @@ withWindow width height title f = do
         GLFW.terminate
   where
     simpleErrorCallback e s =
-        putStrLn $ "error: " ++ show e ++ " " ++ show s
+        putStrLn $ unwords [show e, show s]
 
 --------------------------------------------------------------------------------
+-- Each callback does just one thing: write an appropriate Event to the events
+-- TChan.
 
 errorCallback           :: TChan Event -> GLFW.Error -> String                                                            -> IO ()
 windowPosCallback       :: TChan Event -> GLFW.Window -> Int -> Int                                                       -> IO ()
@@ -173,7 +181,8 @@ charCallback            tc win c          = atomically $ writeTChan tc $ EventCh
 --------------------------------------------------------------------------------
 
 runDemo :: Env -> State -> IO ()
-runDemo env state =
+runDemo env state = do
+    printInstructions
     void $ evalRWST (adjustWindow >> run) env state
 
 run :: Demo ()
@@ -284,8 +293,16 @@ processEvent ev =
 
       (EventKey win k scancode ks mk) -> do
           printEvent "key" [show k, show scancode, show ks, showModifierKeys mk]
-          when (ks == GLFW.KeyState'Pressed && (k == GLFW.Key'Q || k == GLFW.Key'Escape)) $
-              liftIO $ GLFW.setWindowShouldClose win True
+          when (ks == GLFW.KeyState'Pressed) $ do
+              -- Q, Esc: exit
+              when (k == GLFW.Key'Q || k == GLFW.Key'Escape) $
+                liftIO $ GLFW.setWindowShouldClose win True
+              -- ?: print instructions
+              when (k == GLFW.Key'Slash && GLFW.modifierKeysShift mk) $
+                liftIO printInstructions
+              -- i: print GLFW information
+              when (k == GLFW.Key'I) $
+                liftIO $ printInformation win
 
       (EventChar _ c) ->
           printEvent "char" [show c]
@@ -388,6 +405,135 @@ isPress _                       = False
 
 --------------------------------------------------------------------------------
 
+printInstructions :: IO ()
+printInstructions =
+    putStrLn $ render $
+      nest 4 (
+        text "------------------------------------------------------------" $+$
+        text "'?': Print these instructions"                                $+$
+        text "'i': Print GLFW information"                                  $+$
+        text ""                                                             $+$
+        text "* Mouse cursor, keyboard cursor keys, and/or joystick"        $+$
+        text "  control rotation"                                           $+$
+        text "* Mouse scroll wheel controls distance from scene"            $+$
+        text "------------------------------------------------------------"
+      )
+
+printInformation :: GLFW.Window -> IO ()
+printInformation win = do
+    version       <- GLFW.getVersion
+    versionString <- GLFW.getVersionString
+    monitorInfos  <- runMaybeT getMonitorInfos
+    joystickNames <- getJoystickNames
+    clientAPI     <- GLFW.getWindowClientAPI              win
+    cv0           <- GLFW.getWindowContextVersionMajor    win
+    cv1           <- GLFW.getWindowContextVersionMinor    win
+    cv2           <- GLFW.getWindowContextVersionRevision win
+    robustness    <- GLFW.getWindowContextRobustness      win
+    forwardCompat <- GLFW.getWindowOpenGLForwardCompat    win
+    debug         <- GLFW.getWindowOpenGLDebugContext     win
+    profile       <- GLFW.getWindowOpenGLProfile          win
+
+    putStrLn $ render $
+      nest 4 (
+        text "------------------------------------------------------------" $+$
+        text "GLFW C library:" $+$
+        nest 4 (
+          text "Version:"        <+> renderVersion version $+$
+          text "Version string:" <+> renderVersionString versionString
+        ) $+$
+        text "Monitors:" $+$
+        nest 4 (
+          renderMonitorInfos monitorInfos
+        ) $+$
+        text "Joysticks:" $+$
+        nest 4 (
+          renderJoystickNames joystickNames
+        ) $+$
+        text "OpenGL context:" $+$
+        nest 4 (
+          text "Client API:"            <+> renderClientAPI clientAPI $+$
+          text "Version:"               <+> renderContextVersion cv0 cv1 cv2 $+$
+          text "Robustness:"            <+> renderContextRobustness robustness $+$
+          text "Forward compatibility:" <+> renderForwardCompat forwardCompat $+$
+          text "Debug:"                 <+> renderDebug debug $+$
+          text "Profile:"               <+> renderProfile profile
+        ) $+$
+        text "------------------------------------------------------------"
+      )
+  where
+    renderVersion (GLFW.Version v0 v1 v2) =
+        text $ intercalate "." $ map show [v0, v1, v2]
+
+    renderVersionString =
+        text . show
+
+    renderMonitorInfos =
+        maybe (text "(error)") (vcat . map renderMonitorInfo)
+
+    renderMonitorInfo (name, (x,y), (w,h), vms) =
+        text (show name) $+$
+        nest 4 (
+          location <+> size $+$
+          fsep (map renderVideoMode vms)
+        )
+      where
+        location = int x <> text "," <> int y
+        size     = int w <> text "x" <> int h <> text "mm"
+
+    renderVideoMode (GLFW.VideoMode w h r g b rr) =
+        brackets $ res <+> rgb <+> hz
+      where
+        res = int w <> text "x" <> int h
+        rgb = int r <> text "x" <> int g <> text "x" <> int b
+        hz  = int rr <> text "Hz"
+
+    renderJoystickNames pairs =
+        vcat $ map (\(js, name) -> text (show js) <+> text (show name)) pairs
+
+    renderContextVersion v0 v1 v2 =
+        hcat [int v0, text ".", int v1, text ".", int v2]
+
+    renderClientAPI         = text . show
+    renderContextRobustness = text . show
+    renderForwardCompat     = text . show
+    renderDebug             = text . show
+    renderProfile           = text . show
+
+type MonitorInfo = (String, (Int,Int), (Int,Int), [GLFW.VideoMode])
+
+getMonitorInfos :: MaybeT IO [MonitorInfo]
+getMonitorInfos =
+    getMonitors >>= mapM getMonitorInfo
+  where
+    getMonitors :: MaybeT IO [GLFW.Monitor]
+    getMonitors = MaybeT GLFW.getMonitors
+
+    getMonitorInfo :: GLFW.Monitor -> MaybeT IO MonitorInfo
+    getMonitorInfo mon = do
+        name <- getMonitorName mon
+        vms  <- getVideoModes mon
+        MaybeT $ do
+            pos  <- liftIO $ GLFW.getMonitorPos mon
+            size <- liftIO $ GLFW.getMonitorPhysicalSize mon
+            return $ Just (name, pos, size, vms)
+
+    getMonitorName :: GLFW.Monitor -> MaybeT IO String
+    getMonitorName mon = MaybeT $ GLFW.getMonitorName mon
+
+    getVideoModes :: GLFW.Monitor -> MaybeT IO [GLFW.VideoMode]
+    getVideoModes mon = MaybeT $ GLFW.getVideoModes mon
+
+getJoystickNames :: IO [(GLFW.Joystick, String)]
+getJoystickNames =
+    catMaybes `fmap` mapM getJoystick joysticks
+  where
+    getJoystick js =
+        fmap (maybe Nothing (\name -> Just (js, name)))
+             (GLFW.getJoystickName js)
+
+--------------------------------------------------------------------------------
+
 printEvent :: String -> [String] -> Demo ()
 printEvent cbname fields =
     liftIO $ putStrLn $ cbname ++ ": " ++ unwords fields
@@ -409,3 +555,25 @@ curb l h x
   | x < l     = l
   | x > h     = h
   | otherwise = x
+
+--------------------------------------------------------------------------------
+
+joysticks :: [GLFW.Joystick]
+joysticks =
+  [ GLFW.Joystick'1
+  , GLFW.Joystick'2
+  , GLFW.Joystick'3
+  , GLFW.Joystick'4
+  , GLFW.Joystick'5
+  , GLFW.Joystick'6
+  , GLFW.Joystick'7
+  , GLFW.Joystick'8
+  , GLFW.Joystick'9
+  , GLFW.Joystick'10
+  , GLFW.Joystick'11
+  , GLFW.Joystick'12
+  , GLFW.Joystick'13
+  , GLFW.Joystick'14
+  , GLFW.Joystick'15
+  , GLFW.Joystick'16
+  ]
