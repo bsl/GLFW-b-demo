@@ -1,0 +1,13 @@
+Is TChan a sensible choice of chan for events? Should there be some interface
+for subscribing to events by type that registers and unregisters callbacks as
+needed?
+
+Figure out what rotation should actually result from up, down, etc., and be
+consistent across keyboard, mouse, joystick. For example, left and right should
+produce a y-axis rotation. But what do negative and positive rotation mean in
+OpenGL?
+
+Find pain points in implementation and use them for inspiration for
+higher-level API and/or utility functions.
+1.) The directional pad on my PS3 controller corresponds to buttons 4..7 for
+    up, right, down, left. It's annoying to extract just those.
