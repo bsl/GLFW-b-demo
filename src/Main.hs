@@ -126,6 +126,10 @@ main = do
 
 --------------------------------------------------------------------------------
 
+-- GLFW-b is made to be very close to the C API, so creating a window is pretty
+-- clunky by Haskell standards. A higher-level API would have some function
+-- like withWindow.
+
 withWindow :: Int -> Int -> String -> (GLFW.Window -> IO ()) -> IO ()
 withWindow width height title f = do
     GLFW.setErrorCallback $ Just simpleErrorCallback
@@ -145,6 +149,7 @@ withWindow width height title f = do
         putStrLn $ unwords [show e, show s]
 
 --------------------------------------------------------------------------------
+
 -- Each callback does just one thing: write an appropriate Event to the events
 -- TChan.
 
