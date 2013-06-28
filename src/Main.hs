@@ -291,7 +291,7 @@ processEvent ev =
           env <- ask
           modify $ \s -> s
             { stateZDist =
-                let zDist' = stateZDist s + realToFrac (y / 2)
+                let zDist' = stateZDist s + realToFrac (negate $ y / 2)
                 in curb (envZDistClosest env) (envZDistFarthest env) zDist'
             }
           adjustWindow
