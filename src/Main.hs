@@ -18,13 +18,13 @@ import Gear (makeGear)
 --------------------------------------------------------------------------------
 
 data Env = Env
-    { envEventsChan :: TChan Event
-    , envWindow     :: !GLFW.Window
-    , envGear1      :: !GL.DisplayList
-    , envGear2      :: !GL.DisplayList
-    , envGear3      :: !GL.DisplayList
-    , envZDistMin   :: !Double
-    , envZDistMax   :: !Double
+    { envEventsChan    :: TChan Event
+    , envWindow        :: !GLFW.Window
+    , envGear1         :: !GL.DisplayList
+    , envGear2         :: !GL.DisplayList
+    , envGear3         :: !GL.DisplayList
+    , envZDistClosest  :: !Double
+    , envZDistFarthest :: !Double
     }
 
 data State = State
@@ -35,7 +35,7 @@ data State = State
     , stateViewYAngle       :: !Double
     , stateViewZAngle       :: !Double
     , stateGearAngle        :: !Double
-    , stateZDistance        :: !Double
+    , stateZDist            :: !Double
     }
 
 type Demo = RWST Env () State IO
@@ -98,17 +98,17 @@ main = do
         gear2 <- makeGear 0.5 2 2   10 0.7 (GL.Color4 0   0.8 0.2 1)  -- green
         gear3 <- makeGear 1.3 2 0.5 10 0.7 (GL.Color4 0.2 0.2 1   1)  -- blue
 
-        let zmin = -23
-            zmax = -13
-            z    = zmin + ((zmax - zmin) / 2)
+        let zDistClosest  = 10
+            zDistFarthest = zDistClosest + 20
+            zDist         = zDistClosest + ((zDistFarthest - zDistClosest) / 2)
             env = Env
-              { envEventsChan = eventsChan
-              , envWindow     = win
-              , envGear1      = gear1
-              , envGear2      = gear2
-              , envGear3      = gear3
-              , envZDistMin   = zmin
-              , envZDistMax   = zmax
+              { envEventsChan    = eventsChan
+              , envWindow        = win
+              , envGear1         = gear1
+              , envGear2         = gear2
+              , envGear3         = gear3
+              , envZDistClosest  = zDistClosest
+              , envZDistFarthest = zDistFarthest
               }
             state = State
               { stateWindowWidth      = width
@@ -118,7 +118,7 @@ main = do
               , stateViewYAngle       = 0
               , stateViewZAngle       = 0
               , stateGearAngle        = 0
-              , stateZDistance        = z
+              , stateZDist            = zDist
               }
         runDemo env state
 
@@ -290,9 +290,9 @@ processEvent ev =
           printEvent "scroll" [show x', show y']
           env <- ask
           modify $ \s -> s
-            { stateZDistance =
-                let z' = stateZDistance s + realToFrac (y / 2)
-                in curb (envZDistMin env) (envZDistMax env) z'
+            { stateZDist =
+                let zDist' = stateZDist s + realToFrac (y / 2)
+                in curb (envZDistClosest env) (envZDistFarthest env) zDist'
             }
           adjustWindow
 
@@ -317,13 +317,14 @@ adjustWindow = do
     state <- get
     let width  = stateWindowWidth  state
         height = stateWindowHeight state
-        zdist  = stateZDistance    state
-        pos    = GL.Position 0 0
-        size   = GL.Size (fromIntegral width) (fromIntegral height)
-        h      = fromIntegral height / fromIntegral width :: Double
-        znear  = 5           :: Double
-        zfar   = 30          :: Double
-        xmax   = znear * 0.5 :: Double
+        zDist  = stateZDist        state
+
+    let pos   = GL.Position 0 0
+        size  = GL.Size (fromIntegral width) (fromIntegral height)
+        h     = fromIntegral height / fromIntegral width :: Double
+        znear = 1           :: Double
+        zfar  = 40          :: Double
+        xmax  = znear * 0.5 :: Double
     liftIO $ do
         GL.viewport   GL.$= (pos, size)
         GL.matrixMode GL.$= GL.Projection
@@ -336,7 +337,7 @@ adjustWindow = do
                    (realToFrac    zfar)
         GL.matrixMode GL.$= GL.Modelview 0
         GL.loadIdentity
-        GL.translate (GL.Vector3 0 0 (realToFrac zdist) :: GL.Vector3 GL.GLfloat)
+        GL.translate (GL.Vector3 0 0 (negate $ realToFrac zDist) :: GL.Vector3 GL.GLfloat)
 
 draw :: Demo ()
 draw = do
