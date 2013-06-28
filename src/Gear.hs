@@ -30,7 +30,7 @@ makeGear inradius outradius width teeth toothdepth color =
             calca i = realToFrac i * pi2 / realToFrac teeth :: Float
 
         GL.shadeModel GL.$= GL.Flat
-        GL.normal (GL.Normal3 0 0 1 :: GL.Normal3 GL.GLfloat)
+        normal 0 0 1
 
         -- front face
         GL.renderPrimitive GL.QuadStrip $
@@ -51,7 +51,7 @@ makeGear inradius outradius width teeth toothdepth color =
                 vertex (r2 * cos (a + 2 * da)) (r2 * sin (a + 2 * da)) wd2
                 vertex (r1 * cos (a + 3 * da)) (r1 * sin (a + 3 * da)) wd2
 
-        GL.normal (GL.Normal3 0 0 (-1) :: GL.Normal3 GL.GLfloat)
+        normal 0 0 (-1)
 
         -- back face
         GL.renderPrimitive GL.QuadStrip $
