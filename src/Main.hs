@@ -207,6 +207,7 @@ run = do
     draw
     liftIO $ do
         GLFW.swapBuffers win
+        GL.flush  -- not necessary, but someone recommended it
         GLFW.pollEvents
     processEvents
 
