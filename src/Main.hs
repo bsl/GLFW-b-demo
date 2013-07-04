@@ -228,9 +228,9 @@ run = do
       else do
           (kxrot, kyrot) <- liftIO $ getCursorKeyDirections win
           (jxrot, jyrot) <- liftIO $ getJoystickDirections GLFW.Joystick'1
-          modify $ \s -> s
-            { stateXAngle = stateXAngle s + (2 * kxrot) + (2 * jxrot)
-            , stateYAngle = stateYAngle s + (2 * kyrot) + (2 * jyrot)
+          put $ state
+            { stateXAngle = stateXAngle state + (2 * kxrot) + (2 * jxrot)
+            , stateYAngle = stateYAngle state + (2 * kyrot) + (2 * jyrot)
             }
 
     mt <- liftIO GLFW.getTime
@@ -246,7 +246,7 @@ processEvents = do
     tc <- asks envEventsChan
     me <- liftIO $ atomically $ tryReadTChan tc
     case me of
-      (Just e) -> do
+      Just e -> do
           processEvent e
           processEvents
       Nothing -> return ()
