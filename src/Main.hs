@@ -4,7 +4,7 @@ module Main (main) where
 
 import Control.Concurrent.STM    (TChan, atomically, newTChanIO, tryReadTChan, writeTChan)
 import Control.Monad             (unless, when, void)
-import Control.Monad.RWS.Strict  (RWST, ask, asks, evalRWST, get, liftIO, modify)
+import Control.Monad.RWS.Strict  (RWST, ask, asks, evalRWST, get, liftIO, modify, put)
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
 import Data.List                 (intercalate)
 import Data.Maybe                (catMaybes)
@@ -28,14 +28,19 @@ data Env = Env
     }
 
 data State = State
-    { stateWindowWidth      :: !Int
-    , stateWindowHeight     :: !Int
-    , stateIsCursorInWindow :: !Bool
-    , stateViewXAngle       :: !Double
-    , stateViewYAngle       :: !Double
-    , stateViewZAngle       :: !Double
-    , stateGearAngle        :: !Double
-    , stateZDist            :: !Double
+    { stateWindowWidth     :: !Int
+    , stateWindowHeight    :: !Int
+    , stateXAngle          :: !Double
+    , stateYAngle          :: !Double
+    , stateZAngle          :: !Double
+    , stateGearZAngle      :: !Double
+    , stateZDist           :: !Double
+    , stateMouseDown       :: !Bool
+    , stateDragging        :: !Bool
+    , stateDragStartX      :: !Double
+    , stateDragStartY      :: !Double
+    , stateDragStartXAngle :: !Double
+    , stateDragStartYAngle :: !Double
     }
 
 type Demo = RWST Env () State IO
@@ -84,7 +89,7 @@ main = do
         GLFW.setKeyCallback             win $ Just $ keyCallback             eventsChan
         GLFW.setCharCallback            win $ Just $ charCallback            eventsChan
 
-        -- GLFW.swapInterval 1
+        GLFW.swapInterval 1
 
         GL.position (GL.Light 0) GL.$= GL.Vertex4 5 5 10 0
         GL.light    (GL.Light 0) GL.$= GL.Enabled
@@ -111,14 +116,19 @@ main = do
               , envZDistFarthest = zDistFarthest
               }
             state = State
-              { stateWindowWidth      = width
-              , stateWindowHeight     = height
-              , stateIsCursorInWindow = False
-              , stateViewXAngle       = 0
-              , stateViewYAngle       = 0
-              , stateViewZAngle       = 0
-              , stateGearAngle        = 0
-              , stateZDist            = zDist
+              { stateWindowWidth     = width
+              , stateWindowHeight    = height
+              , stateXAngle          = 0
+              , stateYAngle          = 0
+              , stateZAngle          = 0
+              , stateGearZAngle      = 0
+              , stateZDist           = zDist
+              , stateMouseDown       = False
+              , stateDragging        = False
+              , stateDragStartX      = 0
+              , stateDragStartY      = 0
+              , stateDragStartXAngle = 0
+              , stateDragStartYAngle = 0
               }
         runDemo env state
 
@@ -201,26 +211,30 @@ run = do
     processEvents
 
     state <- get
+    if stateDragging state
+      then do
+          let sodx  = stateDragStartX      state
+              sody  = stateDragStartY      state
+              sodxa = stateDragStartXAngle state
+              sodya = stateDragStartYAngle state
+          (x, y) <- liftIO $ GLFW.getCursorPos win
+          let myrot = (x - sodx) / 2
+              mxrot = (y - sody) / 2
+          put $ state
+            { stateXAngle = sodxa + mxrot
+            , stateYAngle = sodya + myrot
+            }
+      else do
+          (kxrot, kyrot) <- liftIO $ getCursorKeyDirections win
+          (jxrot, jyrot) <- liftIO $ getJoystickDirections GLFW.Joystick'1
+          modify $ \s -> s
+            { stateXAngle = stateXAngle s + (2 * kxrot) + (2 * jxrot)
+            , stateYAngle = stateYAngle s + (2 * kyrot) + (2 * jyrot)
+            }
 
-    (kxrot, kyrot) <- liftIO $ getCursorKeyDirections win
-    (jxrot, jyrot) <- liftIO $ getJoystickDirections GLFW.Joystick'1
-    (mxrot, myrot) <- if stateIsCursorInWindow state
-                        then let w = stateWindowWidth  state
-                                 h = stateWindowHeight state
-                             in liftIO $ getMouseDirections win w h
-                        else return (0, 0)
     mt <- liftIO GLFW.getTime
-
-    let xa = stateViewXAngle state
-        ya = stateViewYAngle state
-        xa' = xa + kxrot + jxrot + mxrot
-        ya' = ya + kyrot + jyrot + myrot
-        ga' = maybe 0 (realToFrac . (100*)) mt
-
     modify $ \s -> s
-      { stateViewXAngle = xa'
-      , stateViewYAngle = ya'
-      , stateGearAngle  = ga'
+      { stateGearZAngle = maybe 0 (realToFrac . (100*)) mt
       }
 
     q <- liftIO $ GLFW.windowShouldClose win
@@ -270,19 +284,36 @@ processEvent ev =
       (EventFramebufferSize _ w h) ->
           printEvent "framebuffer size" [show w, show h]
 
-      (EventMouseButton _ mb mba mk) ->
-          printEvent "mouse button" [show mb, show mba, showModifierKeys mk]
+      (EventMouseButton _ mb mbs mk) -> do
+          printEvent "mouse button" [show mb, show mbs, showModifierKeys mk]
+          when (mb == GLFW.MouseButton'1) $ do
+              let pressed = mbs == GLFW.MouseButtonState'Pressed
+              modify $ \s -> s
+                { stateMouseDown = pressed
+                }
+              unless pressed $ do
+                  modify $ \s -> s
+                    { stateDragging = False
+                    }
+                  liftIO $ putStrLn "stopped dragging"
 
       (EventCursorPos _ x y) -> do
           let x' = round x :: Int
               y' = round y :: Int
           printEvent "cursor pos" [show x', show y']
+          state <- get
+          when (stateMouseDown state && not (stateDragging state)) $ do
+              put $ state
+                { stateDragging        = True
+                , stateDragStartX      = x
+                , stateDragStartY      = y
+                , stateDragStartXAngle = stateXAngle state
+                , stateDragStartYAngle = stateYAngle state
+                }
+              liftIO $ putStrLn "started dragging"
 
-      (EventCursorEnter _ cs) -> do
+      (EventCursorEnter _ cs) ->
           printEvent "cursor enter" [show cs]
-          modify $ \s -> s
-            { stateIsCursorInWindow = cs == GLFW.CursorState'InWindow
-            }
 
       (EventScroll _ x y) -> do
           let x' = round x :: Int
@@ -346,10 +377,10 @@ draw = do
     let gear1 = envGear1 env
         gear2 = envGear2 env
         gear3 = envGear3 env
-        xa = stateViewXAngle state
-        ya = stateViewYAngle state
-        za = stateViewZAngle state
-        ga = stateGearAngle  state
+        xa = stateXAngle state
+        ya = stateYAngle state
+        za = stateZAngle state
+        ga = stateGearZAngle  state
     liftIO $ do
         GL.clear [GL.ColorBuffer, GL.DepthBuffer]
         GL.preservingMatrix $ do
@@ -382,27 +413,18 @@ getCursorKeyDirections win = do
     x1 <- isPress `fmap` GLFW.getKey win GLFW.Key'Down
     y0 <- isPress `fmap` GLFW.getKey win GLFW.Key'Left
     y1 <- isPress `fmap` GLFW.getKey win GLFW.Key'Right
-    let x0n = if x0 then   1  else 0
-        x1n = if x1 then (-1) else 0
-        y0n = if y0 then   1  else 0
-        y1n = if y1 then (-1) else 0
+    let x0n = if x0 then (-1) else 0
+        x1n = if x1 then   1  else 0
+        y0n = if y0 then (-1) else 0
+        y1n = if y1 then   1  else 0
     return (x0n + x1n, y0n + y1n)
 
 getJoystickDirections :: GLFW.Joystick -> IO (Double, Double)
 getJoystickDirections js = do
     maxes <- GLFW.getJoystickAxes js
     return $ case maxes of
-      (Just (x:y:_)) -> (y, x)
-      _              -> (0, 0)
-
-getMouseDirections :: GLFW.Window -> Int -> Int -> IO (Double, Double)
-getMouseDirections win w h = do
-    (x, y) <- GLFW.getCursorPos win
-    let wd2 = realToFrac w / 2
-        hd2 = realToFrac h / 2
-        yrot = (x - wd2) / wd2
-        xrot = (hd2 - y) / hd2
-    return (realToFrac xrot, realToFrac yrot)
+      (Just (x:y:_)) -> (-y, x)
+      _              -> ( 0, 0)
 
 isPress :: GLFW.KeyState -> Bool
 isPress GLFW.KeyState'Pressed   = True
@@ -420,8 +442,8 @@ printInstructions =
         text "'i': Print GLFW information"                                  $+$
         text ""                                                             $+$
         text "* Mouse cursor, keyboard cursor keys, and/or joystick"        $+$
-        text "  control rotation"                                           $+$
-        text "* Mouse scroll wheel controls distance from scene"            $+$
+        text "  control rotation."                                          $+$
+        text "* Mouse scroll wheel controls distance from scene."           $+$
         text "------------------------------------------------------------"
       )
 
