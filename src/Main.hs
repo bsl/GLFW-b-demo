@@ -292,26 +292,24 @@ processEvent ev =
               modify $ \s -> s
                 { stateMouseDown = pressed
                 }
-              unless pressed $ do
-                  modify $ \s -> s
-                    { stateDragging = False
-                    }
-                  liftIO $ putStrLn "stopped dragging"
+              unless pressed $
+                modify $ \s -> s
+                  { stateDragging = False
+                  }
 
       (EventCursorPos _ x y) -> do
           let x' = round x :: Int
               y' = round y :: Int
           printEvent "cursor pos" [show x', show y']
           state <- get
-          when (stateMouseDown state && not (stateDragging state)) $ do
-              put $ state
-                { stateDragging        = True
-                , stateDragStartX      = x
-                , stateDragStartY      = y
-                , stateDragStartXAngle = stateXAngle state
-                , stateDragStartYAngle = stateYAngle state
-                }
-              liftIO $ putStrLn "started dragging"
+          when (stateMouseDown state && not (stateDragging state)) $
+            put $ state
+              { stateDragging        = True
+              , stateDragStartX      = x
+              , stateDragStartY      = y
+              , stateDragStartXAngle = stateXAngle state
+              , stateDragStartYAngle = stateYAngle state
+              }
 
       (EventCursorEnter _ cs) ->
           printEvent "cursor enter" [show cs]
