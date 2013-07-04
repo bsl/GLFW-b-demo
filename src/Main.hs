@@ -2,7 +2,7 @@ module Main (main) where
 
 --------------------------------------------------------------------------------
 
-import Control.Concurrent.STM    (TChan, atomically, newTChanIO, tryReadTChan, writeTChan)
+import Control.Concurrent.STM    (TQueue, atomically, newTQueueIO, tryReadTQueue, writeTQueue)
 import Control.Monad             (unless, when, void)
 import Control.Monad.RWS.Strict  (RWST, ask, asks, evalRWST, get, liftIO, modify, put)
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
@@ -18,7 +18,7 @@ import Gear (makeGear)
 --------------------------------------------------------------------------------
 
 data Env = Env
-    { envEventsChan    :: TChan Event
+    { envEventsChan    :: TQueue Event
     , envWindow        :: !GLFW.Window
     , envGear1         :: !GL.DisplayList
     , envGear2         :: !GL.DisplayList
@@ -71,7 +71,7 @@ main = do
     let width  = 640
         height = 480
 
-    eventsChan <- newTChanIO :: IO (TChan Event)
+    eventsChan <- newTQueueIO :: IO (TQueue Event)
 
     withWindow width height "GLFW-b-demo" $ \win -> do
         GLFW.setErrorCallback               $ Just $ errorCallback           eventsChan
@@ -161,37 +161,37 @@ withWindow width height title f = do
 --------------------------------------------------------------------------------
 
 -- Each callback does just one thing: write an appropriate Event to the events
--- TChan.
+-- TQueue.
 
-errorCallback           :: TChan Event -> GLFW.Error -> String                                                            -> IO ()
-windowPosCallback       :: TChan Event -> GLFW.Window -> Int -> Int                                                       -> IO ()
-windowSizeCallback      :: TChan Event -> GLFW.Window -> Int -> Int                                                       -> IO ()
-windowCloseCallback     :: TChan Event -> GLFW.Window                                                                     -> IO ()
-windowRefreshCallback   :: TChan Event -> GLFW.Window                                                                     -> IO ()
-windowFocusCallback     :: TChan Event -> GLFW.Window -> GLFW.FocusState                                                  -> IO ()
-windowIconifyCallback   :: TChan Event -> GLFW.Window -> GLFW.IconifyState                                                -> IO ()
-framebufferSizeCallback :: TChan Event -> GLFW.Window -> Int -> Int                                                       -> IO ()
-mouseButtonCallback     :: TChan Event -> GLFW.Window -> GLFW.MouseButton   -> GLFW.MouseButtonState -> GLFW.ModifierKeys -> IO ()
-cursorPosCallback       :: TChan Event -> GLFW.Window -> Double -> Double                                                 -> IO ()
-cursorEnterCallback     :: TChan Event -> GLFW.Window -> GLFW.CursorState                                                 -> IO ()
-scrollCallback          :: TChan Event -> GLFW.Window -> Double -> Double                                                 -> IO ()
-keyCallback             :: TChan Event -> GLFW.Window -> GLFW.Key -> Int -> GLFW.KeyState -> GLFW.ModifierKeys            -> IO ()
-charCallback            :: TChan Event -> GLFW.Window -> Char                                                             -> IO ()
+errorCallback           :: TQueue Event -> GLFW.Error -> String                                                            -> IO ()
+windowPosCallback       :: TQueue Event -> GLFW.Window -> Int -> Int                                                       -> IO ()
+windowSizeCallback      :: TQueue Event -> GLFW.Window -> Int -> Int                                                       -> IO ()
+windowCloseCallback     :: TQueue Event -> GLFW.Window                                                                     -> IO ()
+windowRefreshCallback   :: TQueue Event -> GLFW.Window                                                                     -> IO ()
+windowFocusCallback     :: TQueue Event -> GLFW.Window -> GLFW.FocusState                                                  -> IO ()
+windowIconifyCallback   :: TQueue Event -> GLFW.Window -> GLFW.IconifyState                                                -> IO ()
+framebufferSizeCallback :: TQueue Event -> GLFW.Window -> Int -> Int                                                       -> IO ()
+mouseButtonCallback     :: TQueue Event -> GLFW.Window -> GLFW.MouseButton   -> GLFW.MouseButtonState -> GLFW.ModifierKeys -> IO ()
+cursorPosCallback       :: TQueue Event -> GLFW.Window -> Double -> Double                                                 -> IO ()
+cursorEnterCallback     :: TQueue Event -> GLFW.Window -> GLFW.CursorState                                                 -> IO ()
+scrollCallback          :: TQueue Event -> GLFW.Window -> Double -> Double                                                 -> IO ()
+keyCallback             :: TQueue Event -> GLFW.Window -> GLFW.Key -> Int -> GLFW.KeyState -> GLFW.ModifierKeys            -> IO ()
+charCallback            :: TQueue Event -> GLFW.Window -> Char                                                             -> IO ()
 
-errorCallback           tc e s            = atomically $ writeTChan tc $ EventError           e s
-windowPosCallback       tc win x y        = atomically $ writeTChan tc $ EventWindowPos       win x y
-windowSizeCallback      tc win w h        = atomically $ writeTChan tc $ EventWindowSize      win w h
-windowCloseCallback     tc win            = atomically $ writeTChan tc $ EventWindowClose     win
-windowRefreshCallback   tc win            = atomically $ writeTChan tc $ EventWindowRefresh   win
-windowFocusCallback     tc win fa         = atomically $ writeTChan tc $ EventWindowFocus     win fa
-windowIconifyCallback   tc win ia         = atomically $ writeTChan tc $ EventWindowIconify   win ia
-framebufferSizeCallback tc win w h        = atomically $ writeTChan tc $ EventFramebufferSize win w h
-mouseButtonCallback     tc win mb mba mk  = atomically $ writeTChan tc $ EventMouseButton     win mb mba mk
-cursorPosCallback       tc win x y        = atomically $ writeTChan tc $ EventCursorPos       win x y
-cursorEnterCallback     tc win ca         = atomically $ writeTChan tc $ EventCursorEnter     win ca
-scrollCallback          tc win x y        = atomically $ writeTChan tc $ EventScroll          win x y
-keyCallback             tc win k sc ka mk = atomically $ writeTChan tc $ EventKey             win k sc ka mk
-charCallback            tc win c          = atomically $ writeTChan tc $ EventChar            win c
+errorCallback           tc e s            = atomically $ writeTQueue tc $ EventError           e s
+windowPosCallback       tc win x y        = atomically $ writeTQueue tc $ EventWindowPos       win x y
+windowSizeCallback      tc win w h        = atomically $ writeTQueue tc $ EventWindowSize      win w h
+windowCloseCallback     tc win            = atomically $ writeTQueue tc $ EventWindowClose     win
+windowRefreshCallback   tc win            = atomically $ writeTQueue tc $ EventWindowRefresh   win
+windowFocusCallback     tc win fa         = atomically $ writeTQueue tc $ EventWindowFocus     win fa
+windowIconifyCallback   tc win ia         = atomically $ writeTQueue tc $ EventWindowIconify   win ia
+framebufferSizeCallback tc win w h        = atomically $ writeTQueue tc $ EventFramebufferSize win w h
+mouseButtonCallback     tc win mb mba mk  = atomically $ writeTQueue tc $ EventMouseButton     win mb mba mk
+cursorPosCallback       tc win x y        = atomically $ writeTQueue tc $ EventCursorPos       win x y
+cursorEnterCallback     tc win ca         = atomically $ writeTQueue tc $ EventCursorEnter     win ca
+scrollCallback          tc win x y        = atomically $ writeTQueue tc $ EventScroll          win x y
+keyCallback             tc win k sc ka mk = atomically $ writeTQueue tc $ EventKey             win k sc ka mk
+charCallback            tc win c          = atomically $ writeTQueue tc $ EventChar            win c
 
 --------------------------------------------------------------------------------
 
@@ -244,7 +244,7 @@ run = do
 processEvents :: Demo ()
 processEvents = do
     tc <- asks envEventsChan
-    me <- liftIO $ atomically $ tryReadTChan tc
+    me <- liftIO $ atomically $ tryReadTQueue tc
     case me of
       Just e -> do
           processEvent e
