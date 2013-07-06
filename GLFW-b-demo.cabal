@@ -7,12 +7,11 @@ maintainer:    Brian Lewis <brian@lorf.org>
 category:      Graphics
 synopsis:      GLFW-b demo
 description:
-  This is a demonstration of GLFW-b that allows the user to interact with
-  spinning gears using cursor keys, mouse, scroll wheel, and/or joystick.
+  This is a demonstration of <http://hackage.haskell.org/package/GLFW-b GLFW-b>
+  allowing the user to interact with colorful spinning gears using cursor keys,
+  mouse, scroll wheel, and joystick.
   .
-  Screenshot: http://i.imgur.com/JZKwVSu.png
-  .
-  GLFW-b: http://hackage.haskell.org/package/GLFW-b
+  Here's a <http://i.imgur.com/JZKwVSu.png screenshot>.
 
 license:       BSD3
 license-file:  LICENSE
