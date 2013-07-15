@@ -34,7 +34,7 @@ executable GLFW-b-demo
   main-is: Main.hs
 
   build-depends:
-    GLFW-b       == 1.0.*,
+    GLFW-b       == 1.1.*,
     OpenGL       == 2.8.*,
     base          < 5,
     mtl          == 2.1.*,
