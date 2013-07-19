@@ -33,6 +33,9 @@ executable GLFW-b-demo
   hs-source-dirs: src
   main-is: Main.hs
 
+  other-modules:
+    Gear
+
   build-depends:
     GLFW-b       == 1.1.*,
     OpenGL       == 2.8.*,
