@@ -1,5 +1,5 @@
 name:          GLFW-b-demo
-version:       1.0.3
+version:       1.0.4
 
 author:        Brian Lewis <brian@lorf.org>
 maintainer:    Brian Lewis <brian@lorf.org>
@@ -37,7 +37,7 @@ executable GLFW-b-demo
     Gear
 
   build-depends:
-    GLFW-b       == 1.2.*,
+    GLFW-b       == 1.4.*,
     OpenGL       == 2.8.*,
     base          < 5,
     mtl          == 2.1.*,
