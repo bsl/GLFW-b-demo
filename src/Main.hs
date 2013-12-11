@@ -103,6 +103,8 @@ main = do
         gear2 <- makeGear 0.5 2 2   10 0.7 (GL.Color4 0   0.8 0.2 1)  -- green
         gear3 <- makeGear 1.3 2 0.5 10 0.7 (GL.Color4 0.2 0.2 1   1)  -- blue
 
+        (fbWidth, fbHeight) <- GLFW.getFramebufferSize win
+
         let zDistClosest  = 10
             zDistFarthest = zDistClosest + 20
             zDist         = zDistClosest + ((zDistFarthest - zDistClosest) / 2)
@@ -116,8 +118,8 @@ main = do
               , envZDistFarthest = zDistFarthest
               }
             state = State
-              { stateWindowWidth     = width
-              , stateWindowHeight    = height
+              { stateWindowWidth     = fbWidth
+              , stateWindowHeight    = fbHeight
               , stateXAngle          = 0
               , stateYAngle          = 0
               , stateZAngle          = 0
@@ -262,13 +264,8 @@ processEvent ev =
       (EventWindowPos _ x y) ->
           printEvent "window pos" [show x, show y]
 
-      (EventWindowSize _ width height) -> do
+      (EventWindowSize _ width height) ->
           printEvent "window size" [show width, show height]
-          modify $ \s -> s
-            { stateWindowWidth  = width
-            , stateWindowHeight = height
-            }
-          adjustWindow
 
       (EventWindowClose _) ->
           printEvent "window close" []
@@ -282,8 +279,13 @@ processEvent ev =
       (EventWindowIconify _ is) ->
           printEvent "window iconify" [show is]
 
-      (EventFramebufferSize _ w h) ->
-          printEvent "framebuffer size" [show w, show h]
+      (EventFramebufferSize _ width height) -> do
+          printEvent "framebuffer size" [show width, show height]
+          modify $ \s -> s
+            { stateWindowWidth  = width
+            , stateWindowHeight = height
+            }
+          adjustWindow
 
       (EventMouseButton _ mb mbs mk) -> do
           printEvent "mouse button" [show mb, show mbs, showModifierKeys mk]
