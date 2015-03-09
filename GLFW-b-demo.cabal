@@ -39,7 +39,7 @@ executable GLFW-b-demo
 
   build-depends:
     GLFW-b       == 1.4.*,
-    OpenGL       >= 2.8 && < 2.10,
+    OpenGL       >= 2.8 && < 2.12,
     base          < 5,
     mtl          == 2.1.*,
     pretty       == 1.1.*,
