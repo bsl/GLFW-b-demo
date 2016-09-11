@@ -38,13 +38,13 @@ executable GLFW-b-demo
     Gear
 
   build-depends:
-    GLFW-b       == 1.4.*,
-    OpenGL       >= 2.8 && < 2.10,
-    base          < 5,
-    mtl          == 2.1.*,
-    pretty       == 1.1.*,
-    stm          == 2.4.*,
-    transformers == 0.3.*
+                GLFW-b,
+                OpenGL       ,
+                base         ,
+                mtl          ,
+                pretty       ,
+                stm          ,
+                transformers
 
   ghc-options: -Wall -O2
   if impl(ghc >= 6.8)
