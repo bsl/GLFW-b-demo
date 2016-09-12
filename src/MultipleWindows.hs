@@ -8,7 +8,7 @@ import Control.Monad             (unless, when, void)
 import Control.Monad.RWS.Strict  (RWST, ask, asks, evalRWST, get, liftIO, modify, put)
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
 import Data.List                 (intercalate)
-import Data.Maybe                (catMaybes)
+import Data.Maybe
 import Text.PrettyPrint
 import Control.Concurrent
 
@@ -83,6 +83,7 @@ main = do
   -- GLFW.windowHint (GLFW.WindowHint'OpenGLForwardCompat True)
 
   when r $ do
+    -- void (concurrently window window)
     a <- async window
     b <- async window
     wait a
@@ -236,6 +237,8 @@ runDemo env state = do
 
 run :: Demo ()
 run = do
+    -- number of seconds since GLFW started
+    previousmt <- liftIO GLFW.getTime
     win <- asks envWindow
 
     draw
@@ -273,6 +276,7 @@ run = do
       }
 
     q <- liftIO $ GLFW.windowShouldClose win
+    liftIO (putStrLn ("time taken to draw: " ++ show (1000 * (fromMaybe 0 mt - fromMaybe 0 previousmt)) ++ " milliseconds"))
     unless q run
 
 processEvents :: Demo ()
