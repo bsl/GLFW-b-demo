@@ -71,14 +71,25 @@ data Event =
 main :: IO ()
 -- main = void (concurrently window (threadDelay (1 * 1000 * 1000) >> window))
 main = do
-  a <- asyncBound window
-  threadDelay (1 * 1000 * 1000)
-  b <- asyncBound window
-  wait a
-  putStrLn "first window closed"
-  wait b
-  putStrLn "second window closed"
-  threadDelay (1 * 1000 * 1000)
+  GLFW.setErrorCallback $ Just simpleErrorCallback
+  r <- GLFW.init
+
+  -- http://stackoverflow.com/questions/23844813/opengl-program-compiles-but-gives-error-when-run-ubuntu-14-04
+  -- use 3.3 context as my video card supports only that as reported by glxinfo
+  -- glfw bindings is built on GLFW 3.1
+  GLFW.windowHint (GLFW.WindowHint'ContextVersionMajor 3)
+  GLFW.windowHint (GLFW.WindowHint'ContextVersionMinor 0)
+  -- GLFW.windowHint (GLFW.WindowHint'OpenGLProfile  GLFW.OpenGLProfile'Core)
+  -- GLFW.windowHint (GLFW.WindowHint'OpenGLForwardCompat True)
+
+  when r $ do
+    a <- async window
+    b <- async window
+    wait a
+    putStrLn "first window closed"
+    wait b
+    putStrLn "second window closed"
+    threadDelay (1 * 1000 * 1000)
   GLFW.terminate
   return ()
 
@@ -169,18 +180,6 @@ window = do
 
 withWindow :: Int -> Int -> String -> (GLFW.Window -> IO ()) -> IO ()
 withWindow width height title f = do
-    GLFW.setErrorCallback $ Just simpleErrorCallback
-    r <- GLFW.init
-
-    -- http://stackoverflow.com/questions/23844813/opengl-program-compiles-but-gives-error-when-run-ubuntu-14-04
-    -- use 3.3 context as my video card supports only that as reported by glxinfo
-    -- glfw bindings is built on GLFW 3.1
-    GLFW.windowHint (GLFW.WindowHint'ContextVersionMajor 3)
-    GLFW.windowHint (GLFW.WindowHint'ContextVersionMinor 0)
---     GLFW.windowHint (GLFW.WindowHint'OpenGLProfile  GLFW.OpenGLProfile'Core)
---     GLFW.windowHint (GLFW.WindowHint'OpenGLForwardCompat True)
-
-    when r $ do
         w <- GLFW.createWindow width height title Nothing Nothing
         case w of
           (Just win) -> do
@@ -189,10 +188,9 @@ withWindow width height title f = do
               GLFW.setErrorCallback $ Just simpleErrorCallback
               GLFW.destroyWindow win
           Nothing -> return ()
---         GLFW.terminate
-  where
-    simpleErrorCallback e s =
-        putStrLn $ unwords [show e, show s]
+
+simpleErrorCallback :: (Show a, Show a1) => a -> a1 -> IO ()
+simpleErrorCallback e s = putStrLn (unwords [show e, show s])
 
 --------------------------------------------------------------------------------
 
