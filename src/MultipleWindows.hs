@@ -72,13 +72,13 @@ main :: IO ()
 -- main = void (concurrently window (threadDelay (1 * 1000 * 1000) >> window))
 main = do
   a <- asyncBound window
-  threadDelay (10 * 1000 * 1000)
+  threadDelay (1 * 1000 * 1000)
   b <- asyncBound window
   wait a
   putStrLn "first window closed"
   wait b
   putStrLn "second window closed"
-  threadDelay (10 * 1000 * 1000)
+  threadDelay (1 * 1000 * 1000)
   GLFW.terminate
   return ()
 
@@ -120,6 +120,15 @@ window = do
         gear3 <- makeGear 1.3 2 0.5 10 0.7 (GL.Color4 0.2 0.2 1   1)  -- blue
 
         (fbWidth, fbHeight) <- GLFW.getFramebufferSize win
+        major <- GLFW.getWindowContextVersionMajor win
+        minor <- GLFW.getWindowContextVersionMinor win
+        revision <- GLFW.getWindowContextVersionRevision win
+        putStrLn ("OpenGL version recieved: " ++ show major ++ "," ++ show minor ++ "," ++ show revision);
+        version <- GLFW.getVersion
+        putStrLn ("Supported OpenGL Version is: " ++ show version);
+        versionString <- GLFW.getVersionString
+        putStrLn ("Supported OpenGL Version String is: " ++ show versionString);
+--         putStrLn ("Supported GLSL is %s\n", (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION));
 
         let zDistClosest  = 10
             zDistFarthest = zDistClosest + 20
@@ -162,6 +171,15 @@ withWindow :: Int -> Int -> String -> (GLFW.Window -> IO ()) -> IO ()
 withWindow width height title f = do
     GLFW.setErrorCallback $ Just simpleErrorCallback
     r <- GLFW.init
+
+    -- http://stackoverflow.com/questions/23844813/opengl-program-compiles-but-gives-error-when-run-ubuntu-14-04
+    -- use 3.3 context as my video card supports only that as reported by glxinfo
+    GLFW.windowHint (GLFW.WindowHint'ContextVersionMajor 3)
+  -- causes Prelude.head empty list error
+--     GLFW.windowHint (GLFW.WindowHint'ContextVersionMinor 3)
+    GLFW.windowHint (GLFW.WindowHint'OpenGLProfile  GLFW.OpenGLProfile'Core)
+    GLFW.windowHint (GLFW.WindowHint'OpenGLForwardCompat True)
+
     when r $ do
         w <- GLFW.createWindow width height title Nothing Nothing
         case w of
