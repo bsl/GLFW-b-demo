@@ -174,11 +174,11 @@ withWindow width height title f = do
 
     -- http://stackoverflow.com/questions/23844813/opengl-program-compiles-but-gives-error-when-run-ubuntu-14-04
     -- use 3.3 context as my video card supports only that as reported by glxinfo
+    -- glfw bindings is built on GLFW 3.1
     GLFW.windowHint (GLFW.WindowHint'ContextVersionMajor 3)
-  -- causes Prelude.head empty list error
---     GLFW.windowHint (GLFW.WindowHint'ContextVersionMinor 3)
-    GLFW.windowHint (GLFW.WindowHint'OpenGLProfile  GLFW.OpenGLProfile'Core)
-    GLFW.windowHint (GLFW.WindowHint'OpenGLForwardCompat True)
+    GLFW.windowHint (GLFW.WindowHint'ContextVersionMinor 0)
+--     GLFW.windowHint (GLFW.WindowHint'OpenGLProfile  GLFW.OpenGLProfile'Core)
+--     GLFW.windowHint (GLFW.WindowHint'OpenGLForwardCompat True)
 
     when r $ do
         w <- GLFW.createWindow width height title Nothing Nothing
