@@ -8,7 +8,7 @@ import Control.Monad.RWS.Strict  (RWST, ask, asks, evalRWST, get, liftIO, modify
 import Control.Monad.Trans.Maybe (MaybeT(..), runMaybeT)
 import Data.List                 (intercalate)
 import Data.Maybe                (catMaybes)
-import Text.PrettyPrint
+import Text.PrettyPrint   hiding ((<>))
 
 import qualified Graphics.Rendering.OpenGL as GL
 import qualified Graphics.UI.GLFW          as GLFW
@@ -53,8 +53,8 @@ data Event =
   | EventWindowSize      !GLFW.Window !Int !Int
   | EventWindowClose     !GLFW.Window
   | EventWindowRefresh   !GLFW.Window
-  | EventWindowFocus     !GLFW.Window !GLFW.FocusState
-  | EventWindowIconify   !GLFW.Window !GLFW.IconifyState
+  | EventWindowFocus     !GLFW.Window !Bool
+  | EventWindowIconify   !GLFW.Window !Bool
   | EventFramebufferSize !GLFW.Window !Int !Int
   | EventMouseButton     !GLFW.Window !GLFW.MouseButton !GLFW.MouseButtonState !GLFW.ModifierKeys
   | EventCursorPos       !GLFW.Window !Double !Double
@@ -170,8 +170,8 @@ windowPosCallback       :: TQueue Event -> GLFW.Window -> Int -> Int            
 windowSizeCallback      :: TQueue Event -> GLFW.Window -> Int -> Int                                                       -> IO ()
 windowCloseCallback     :: TQueue Event -> GLFW.Window                                                                     -> IO ()
 windowRefreshCallback   :: TQueue Event -> GLFW.Window                                                                     -> IO ()
-windowFocusCallback     :: TQueue Event -> GLFW.Window -> GLFW.FocusState                                                  -> IO ()
-windowIconifyCallback   :: TQueue Event -> GLFW.Window -> GLFW.IconifyState                                                -> IO ()
+windowFocusCallback     :: TQueue Event -> GLFW.Window -> Bool                                                             -> IO ()
+windowIconifyCallback   :: TQueue Event -> GLFW.Window -> Bool                                                             -> IO ()
 framebufferSizeCallback :: TQueue Event -> GLFW.Window -> Int -> Int                                                       -> IO ()
 mouseButtonCallback     :: TQueue Event -> GLFW.Window -> GLFW.MouseButton   -> GLFW.MouseButtonState -> GLFW.ModifierKeys -> IO ()
 cursorPosCallback       :: TQueue Event -> GLFW.Window -> Double -> Double                                                 -> IO ()
