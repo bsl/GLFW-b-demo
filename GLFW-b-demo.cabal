@@ -38,7 +38,7 @@ executable GLFW-b-demo
     Gear
 
   build-depends:
-    GLFW-b       == 1.4.*,
+    GLFW-b       == 3.2.*,
     OpenGL       == 3.0.*,
     base          < 5,
     mtl          == 2.2.*,
